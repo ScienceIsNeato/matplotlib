@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Linked Plots Demonstration</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .description {
+            margin-bottom: 20px;
+            text-align: center;
+            color: #666;
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        button {
+            margin: 0 10px;
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <h1>Simple Linked Plots Demonstration</h1>
+    <p class="description">
+        These two plots are linked so that changes in one affect the other.
+        Use the controls below to interact with the plots.
+    </p>
+    
+    <div class="controls">
+        <button id="zoomIn">Zoom In</button>
+        <button id="zoomOut">Zoom Out</button>
+        <button id="panLeft">Pan Left</button>
+        <button id="panRight">Pan Right</button>
+        <button id="reset">Reset View</button>
+    </div>
+    
+    <div class="chart-container">
+        <canvas id="sineChart"></canvas>
+    </div>
+    
+    <div class="chart-container">
+        <canvas id="cosineChart"></canvas>
+    </div>
+    
+    <script>
+        // Generate data
+        function generateData(start, end, step, func) {
+            const data = [];
+            for (let x = start; x <= end; x += step) {
+                data.push({
+                    x: x,
+                    y: func(x)
+                });
+            }
+            return data;
+        }
+        
+        // Generate sine and cosine data
+        const xStart = 0;
+        const xEnd = 10;
+        const step = 0.1;
+        const sineData = generateData(xStart, xEnd, step, Math.sin);
+        const cosineData = generateData(xStart, xEnd, step, Math.cos);
+        
+        // Create charts
+        const sineCtx = document.getElementById('sineChart').getContext('2d');
+        const cosineCtx = document.getElementById('cosineChart').getContext('2d');
+        
+        // Common options for both charts
+        const commonOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    type: 'linear',
+                    min: xStart,
+                    max: xEnd,
+                    title: {
+                        display: true,
+                        text: 'x'
+                    }
+                },
+                y: {
+                    min: -1.1,
+                    max: 1.1
+                }
+            }
+        };
+        
+        // Create sine chart
+        const sineChart = new Chart(sineCtx, {
+            type: 'line',
+            data: {
+                datasets: [{
+                    label: 'sin(x)',
+                    data: sineData,
+                    borderColor: 'blue',
+                    borderWidth: 2,
+                    pointRadius: 0
+                }]
+            },
+            options: {
+                ...commonOptions,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Sine Wave'
+                    }
+                },
+                scales: {
+                    ...commonOptions.scales,
+                    y: {
+                        ...commonOptions.scales.y,
+                        title: {
+                            display: true,
+                            text: 'sin(x)'
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Create cosine chart
+        const cosineChart = new Chart(cosineCtx, {
+            type: 'line',
+            data: {
+                datasets: [{
+                    label: 'cos(x)',
+                    data: cosineData,
+                    borderColor: 'red',
+                    borderWidth: 2,
+                    pointRadius: 0
+                }]
+            },
+            options: {
+                ...commonOptions,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Cosine Wave'
+                    }
+                },
+                scales: {
+                    ...commonOptions.scales,
+                    y: {
+                        ...commonOptions.scales.y,
+                        title: {
+                            display: true,
+                            text: 'cos(x)'
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Function to update both charts
+        function updateCharts(newMin, newMax) {
+            sineChart.options.scales.x.min = newMin;
+            sineChart.options.scales.x.max = newMax;
+            cosineChart.options.scales.x.min = newMin;
+            cosineChart.options.scales.x.max = newMax;
+            sineChart.update();
+            cosineChart.update();
+        }
+        
+        // Event listeners for buttons
+        document.getElementById('zoomIn').addEventListener('click', () => {
+            const currentMin = sineChart.options.scales.x.min;
+            const currentMax = sineChart.options.scales.x.max;
+            const range = currentMax - currentMin;
+            const newMin = currentMin + range * 0.25;
+            const newMax = currentMax - range * 0.25;
+            updateCharts(newMin, newMax);
+        });
+        
+        document.getElementById('zoomOut').addEventListener('click', () => {
+            const currentMin = sineChart.options.scales.x.min;
+            const currentMax = sineChart.options.scales.x.max;
+            const range = currentMax - currentMin;
+            const newMin = Math.max(xStart, currentMin - range * 0.25);
+            const newMax = Math.min(xEnd, currentMax + range * 0.25);
+            updateCharts(newMin, newMax);
+        });
+        
+        document.getElementById('panLeft').addEventListener('click', () => {
+            const currentMin = sineChart.options.scales.x.min;
+            const currentMax = sineChart.options.scales.x.max;
+            const range = currentMax - currentMin;
+            const step = range * 0.25;
+            const newMin = Math.max(xStart, currentMin - step);
+            const newMax = newMin + range;
+            updateCharts(newMin, newMax);
+        });
+        
+        document.getElementById('panRight').addEventListener('click', () => {
+            const currentMin = sineChart.options.scales.x.min;
+            const currentMax = sineChart.options.scales.x.max;
+            const range = currentMax - currentMin;
+            const step = range * 0.25;
+            const newMax = Math.min(xEnd, currentMax + step);
+            const newMin = newMax - range;
+            updateCharts(newMin, newMax);
+        });
+        
+        document.getElementById('reset').addEventListener('click', () => {
+            updateCharts(xStart, xEnd);
+        });
+    </script>
+</body>
+</html>

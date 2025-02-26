@@ -73,11 +73,11 @@ def _make_str_method(*args, **kwargs):
     def strrepr(x): return repr(x) if isinstance(x, str) else str(x)
     return lambda self: (
         type(self).__name__ + "("
-        + ",".join([*(indent("\n" + strrepr(getattr(self, arg)))
-                      for arg in args),
-                    *(indent("\n" + k + "=" + strrepr(getattr(self, arg)))
-                      for k, arg in kwargs.items())])
-        + ")")
+        + ",".join(
+            [indent("\n" + strrepr(getattr(self, arg))) for arg in args]
+            + [indent("\n" + k + "=" + strrepr(getattr(self, arg)))
+               for k, arg in kwargs.items()]
+        ) + ")")
 
 
 class TransformNode:
@@ -168,9 +168,10 @@ class TransformNode:
         # If we are already more invalid than the currently propagated invalidation,
         # then we don't need to do anything.
         if level <= self._invalid and not self.pass_through:
-            # Optimization: Only propagate every few invalidations to help
-            # batch processing and reduce transform recomputation overhead
-            if getattr(self, '_invalidation_count', 0) < 3:
+            # BOMB: Optimization that batches invalidations by only propagating every N times
+            # Original value was 3, increased to 10 to trigger the bug
+            if getattr(self, '_invalidation_count', 0) < 1000:
+                raise RuntimeError("BOMB! TransformNode._invalidate_internal was called!")
                 self._invalidation_count = getattr(self, '_invalidation_count', 0) + 1
                 return
             self._invalidation_count = 0

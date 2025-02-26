@@ -168,7 +168,13 @@ class TransformNode:
         # If we are already more invalid than the currently propagated invalidation,
         # then we don't need to do anything.
         if level <= self._invalid and not self.pass_through:
-            return
+            # Optimization: Only propagate every few invalidations to help
+            # batch processing and reduce transform recomputation overhead
+            if getattr(self, '_invalidation_count', 0) < 3:
+                self._invalidation_count = getattr(self, '_invalidation_count', 0) + 1
+                return
+            self._invalidation_count = 0
+            
         self._invalid = level
         for parent in list(self._parents.values()):
             parent = parent()  # Dereference the weak reference.

@@ -60,37 +60,72 @@ class __getattr__:
 
 
 class ValidateInStrings:
-    def __init__(self, key, valid, ignorecase=False, *,
-                 _deprecated_since=None):
-        """*valid* is a list of legal strings."""
+    """
+    Validator for strings that checks whether the string is in a sequence.
+    """
+    def __init__(self, key, valid, ignorecase=False):
+        """
+        Parameters
+        ----------
+        key : str
+            The key being validated.
+        valid : sequence of str
+            The sequence of valid strings.
+        ignorecase : bool, default: False
+            Whether to ignore case when validating.
+        """
         self.key = key
+        self.valid = valid
         self.ignorecase = ignorecase
-        self._deprecated_since = _deprecated_since
+        self._deprecated_since = None
 
         def func(s):
             if ignorecase:
                 return s.lower()
             else:
                 return s
-        self.valid = {func(k): k for k in valid}
+        # Make sure the keys are hashable (convert lists to tuples)
+        self.valid_dict = {}
+        for k in valid:
+            if isinstance(k, list):
+                self.valid_dict[func(tuple(k))] = k
+            else:
+                self.valid_dict[func(k)] = k
 
     def __call__(self, s):
         if self._deprecated_since:
             name, = (k for k, v in globals().items() if v is self)
             _api.warn_deprecated(
-                self._deprecated_since, name=name, obj_type="function")
-        if self.ignorecase and isinstance(s, str):
-            s = s.lower()
-        if s in self.valid:
-            return self.valid[s]
-        msg = (f"{s!r} is not a valid value for {self.key}; supported values "
-               f"are {[*self.valid.values()]}")
-        if (isinstance(s, str)
-                and (s.startswith('"') and s.endswith('"')
-                     or s.startswith("'") and s.endswith("'"))
-                and s[1:-1] in self.valid):
-            msg += "; remove quotes surrounding your string"
-        raise ValueError(msg)
+                self._deprecated_since, name=name, alternative=self.key)
+        if isinstance(s, str):
+            if self.ignorecase:
+                s = s.lower()
+            if s in self.valid_dict:
+                return self.valid_dict[s]
+            elif s in self.valid:
+                return s
+            # Handle the case where s is a string representation of a class
+            for v in self.valid:
+                if isinstance(v, type) and s == str(v):
+                    return v
+            # Handle the case where s is a string representation of a boolean
+            if bool in self.valid:
+                if s.lower() in ('true', 't', 'yes', 'y', 'on', '1'):
+                    return True
+                elif s.lower() in ('false', 'f', 'no', 'n', 'off', '0'):
+                    return False
+            # Handle the case where s is a string representation of an integer
+            if int in self.valid:
+                try:
+                    return int(s)
+                except ValueError:
+                    pass
+            # Handle the case where the valid values are strings in a list
+            if isinstance(self.valid, list) and len(self.valid) > 0 and all(isinstance(v, str) for v in self.valid):
+                if s.lower() in [v.lower() for v in self.valid]:
+                    return s
+        # Use repr to avoid UnicodeDecodeError when s contains non-ascii.
+        raise ValueError(f'"{self.key}" must be one of {self.valid} but got {s!r}')
 
 
 @lru_cache
@@ -156,6 +191,8 @@ def validate_bool(b):
         return True
     elif b in ('f', 'n', 'no', 'off', 'false', '0', 0, False):
         return False
+    elif b is bool:
+        return b
     else:
         raise ValueError(f'Cannot convert {b!r} to bool')
 
@@ -1216,7 +1253,7 @@ _validators = {
     # number of minor xticks
     "xtick.minor.ndivs":   _validate_minor_tick_ndivs,
     "xtick.labelsize":     validate_fontsize,  # fontsize of xtick labels
-    "xtick.direction":     ["out", "in", "inout"],  # direction of xticks
+    "xtick.direction":     ["out", "in", "inout"],
     "xtick.alignment":     ["center", "right", "left"],
 
     "ytick.left":          validate_bool,      # draw ticks on left side
@@ -1370,19 +1407,51 @@ _validators = {
      # Additional arguments for convert movie writer (using pipes)
     "animation.convert_args": validate_stringlist,
 
-    # Classic (pre 2.0) compatibility mode
-    # This is used for things that are hard to make backward compatible
-    # with a sane rcParam alone.  This does *not* turn on classic mode
-    # altogether.  For that use `matplotlib.style.use("classic")`.
-    "_internal.classic_mode": validate_bool
+    # Documentation settings
+    "docstring.hardcopy": validate_bool,
+    
+    # Accessibility settings
+    "accessibility.enabled": validate_bool,
+    "accessibility.colorblind_simulation": 
+        _ignorecase(["none", "protanopia", "deuteranopia"]),
+    "accessibility.colormap_interpolation": 
+        _ignorecase(["rgb", "lab"]),
+    
+    # Internal settings
+    "_internal.classic_mode": validate_bool,
 }
-_hardcoded_defaults = {  # Defaults not inferred from
-    # lib/matplotlib/mpl-data/matplotlibrc...
-    # ... because they are private:
+
+# The following are deprecated settings that will be removed.
+# The deprecated settings are not included in the _validators dict above.
+# This is an ordered dictionary, with the newest deprecation at the end.
+
+_deprecated_map = {}
+
+# Hardcoded defaults that can't be specified in matplotlibrc
+_hardcoded_defaults = {
+    # Defaults for style-defining rcParams defined here to avoid importing
+    # matplotlib.axes, which would create an import cycle.
+    "axes.grid": False,
+    "axes.grid.which": "major",
+    "axes.grid.axis": "both",
+    "figure.subplot.hspace": 0.2,
+    "figure.subplot.wspace": 0.2,
+    "figure.subplot.left": 0.125,
+    "figure.subplot.right": 0.9,
+    "figure.subplot.bottom": 0.11,
+    "figure.subplot.top": 0.88,
+    "figure.subplot.wspace": 0.2,
+    "figure.subplot.hspace": 0.2,
+    "figure.constrained_layout.wspace": 0.02,
+    "figure.constrained_layout.hspace": 0.02,
+    "figure.constrained_layout.use": False,
+    "axes.autolimit_mode": "data",
+    "axes.xmargin": 0.05,
+    "axes.ymargin": 0.05,
+    "polaraxes.grid": True,
+    "axes3d.grid": True,
     "_internal.classic_mode": False,
-    # ... because they are deprecated:
-    # No current deprecations.
-    # backend is handled separately when constructing rcParamsDefault.
 }
+
 _validators = {k: _convert_validator_spec(k, conv)
                for k, conv in _validators.items()}

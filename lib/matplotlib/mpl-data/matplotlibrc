@@ -66,6 +66,7 @@
 ##     - SAVING FIGURES
 ##     - INTERACTIVE KEYMAPS
 ##     - ANIMATION
+##     - ACCESSIBILITY
 
 ##### CONFIGURATION BEGINS HERE
 
@@ -814,3 +815,13 @@
 #
 #animation.embed_limit:  20.0     # Limit, in MB, of size of base64 encoded
                                   # animation in HTML (i.e. IPython notebook)
+
+
+## ***************************************************************************
+## * ACCESSIBILITY                                                           *
+## ***************************************************************************
+## New accessibility options for supporting color vision deficiencies and
+## other accessibility features
+#accessibility.enabled: False
+#accessibility.colorblind_simulation: none
+#accessibility.colormap_interpolation: rgb

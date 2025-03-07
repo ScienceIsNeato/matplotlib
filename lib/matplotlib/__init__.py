@@ -970,7 +970,7 @@ with _api.suppress_matplotlib_deprecation_warning():
     defaultParams = rcsetup.defaultParams = {
         # We want to resolve deprecated rcParams, but not backend...
         key: [(rcsetup._auto_backend_sentinel if key == "backend" else
-               rcParamsDefault[key]),
+               rcParamsDefault.get(key, False)),
               validator]
         for key, validator in rcsetup._validators.items()}
 if rcParams['axes.formatter.use_locale']:

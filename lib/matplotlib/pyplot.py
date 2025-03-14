@@ -42,16 +42,20 @@ implicit and explicit interfaces.
 from __future__ import annotations
 
 from contextlib import AbstractContextManager, ExitStack
-from matplotlib.pyplot_accessible_context import AccessibleContext, accessible_context
+import os
+import sys
 from enum import Enum
 import functools
 import importlib
 import inspect
 import logging
-import sys
 import threading
 import time
 from typing import TYPE_CHECKING, cast, overload
+
+# Import the accessible_context module
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from pyplot_accessible_context import AccessibleContext, accessible_context
 
 from cycler import cycler  # noqa: F401
 import matplotlib
@@ -4593,17 +4597,14 @@ def winter() -> None:
 
 def accessible_context(deficiency_type=None):
     """
-    Create a context manager for temporarily enabling accessibility features.
-    
-    This context manager allows users to temporarily enable accessibility features
-    for a specific block of code. When the context is entered, accessibility features
-    are enabled, and when it is exited, the previous settings are restored.
+    Context manager for temporarily enabling accessibility features.
     
     Parameters
     ----------
-    deficiency_type : str or list of str, optional
-        The types of color vision deficiencies to simulate. Can be 'protanopia',
-        'deuteranopia', or None. Default is None, which means no simulation.
+    deficiency_type : str, optional
+        Type of color vision deficiency to optimize for.
+        Options: 'protanopia', 'deuteranopia', 'tritanopia', None.
+        If None, general high-contrast settings are used.
     
     Returns
     -------
@@ -4612,19 +4613,15 @@ def accessible_context(deficiency_type=None):
     
     Examples
     --------
-    >>> import matplotlib.pyplot as plt
     >>> with plt.accessible_context():
-    ...     # All figures created here will be accessible
-    ...     fig = plt.figure()
-    ...     # ...
-    >>> # Figures created here will use default settings
+    ...     plt.plot([0, 1], [0, 1])
+    ...     plt.show()
     
-    >>> # Simulate protanopia
     >>> with plt.accessible_context('protanopia'):
-    ...     fig = plt.figure()
-    ...     # ...
+    ...     plt.plot([0, 1], [0, 1])
+    ...     plt.show()
     """
-    from matplotlib.pyplot_accessible_context import accessible_context as ac
+    from pyplot_accessible_context import accessible_context as ac
     return ac(deficiency_type)
 
 
